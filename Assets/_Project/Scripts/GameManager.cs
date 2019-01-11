@@ -19,20 +19,27 @@ public class GameManager : MonoBehaviour
 	public GameObject _MainCamera;
 	public static GameObject mainCamera;
 
+	public GameObject _UI;
+	public static GameObject UI;
+
+
+	public int level;
+
 
 	// Start is called before the first frame update
 	void Awake()
 	{
 		enemyPref = _enemyPref;
 		worldGenerator = _worldGenerator;
-		player = Instantiate(_player);
+		player = GameObject.Find("Player");
 		mainCamera = _MainCamera;
+		UI = _UI;
 	}
 
 	// Update is called once per frame
 	void Update()
 	{
-
+		level = worldGenerator.zPos / 90;
 	}
 
 	public void CloseGame()

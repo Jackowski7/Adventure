@@ -5,12 +5,33 @@ using UnityEngine.AI;
 
 public class Node : MonoBehaviour
 {
-	int lastGeneratedRow;
+	public WorldGenerator worldGenerator;
+
+	public int lastGeneratedRow;
 	public int distanceFromWall = 0;
 	public int xVal;
 	public bool leftSide;
 
 	public bool Safe = true;
+
+	public List<GameObject> DesertDecor = new List<GameObject> { };
+	public GameObject _groundDesert;
+	public GameObject _holeDesert;
+
+	public List<GameObject> ForestDecor = new List<GameObject> { };
+	public GameObject _groundForest;
+	public GameObject _holeForest;
+
+	public List<GameObject> WinterDecor = new List<GameObject> { };
+	public GameObject _groundWinter;
+	public GameObject _holeWinter;
+
+	public GameObject _firefly;
+
+	public bool isWater = false;
+
+	public bool night = false;
+	public int biomeCount;
 
 	NavMeshModifier navMeshModifier;
 
@@ -19,40 +40,96 @@ public class Node : MonoBehaviour
 		navMeshModifier = GetComponent<NavMeshModifier>();
 	}
 
-	public void SpawnEnemy()
+	public void SpawnGround(int biome)
 	{
-		GameObject enemy = Instantiate(GameManager.enemyPref, transform.position, Quaternion.Euler(Vector3.zero), transform);
+		if (biome == 0) // forest
+		{
+			GameObject ground = Instantiate(_groundForest, transform.position, transform.rotation, transform);
+			if (night)
+			{
+				if (Random.Range(0, 100) > 95)
+				{
+					GameObject firefly = Instantiate(_firefly, transform.position, transform.rotation, transform);
+				}
+			}
+		}
+		else if (biome == 1) // desert
+		{
+			GameObject ground = Instantiate(_groundDesert, transform.position, transform.rotation, transform);
+		}
+		else if (biome == 2) // winter
+		{
+			GameObject ground = Instantiate(_groundWinter, transform.position, transform.rotation, transform);
+		}
+
+
 	}
 
-	public void SpawnTree()
+	public void SpawnEnemy(int biome)
 	{
-		Renderer rend = GetComponentInChildren<Renderer>();
-		rend.material.color = Color.green;
-		navMeshModifier.area = 1;
+		GameObject enemy = Instantiate(GameManager.enemyPref, transform.position, transform.rotation, transform);
 	}
 
-	public void SpawnRock()
+	public void SpawnDecor(int biome)
 	{
-		Renderer rend = GetComponentInChildren<Renderer>();
-		rend.material.color = Color.grey;
-		navMeshModifier.area = 1;
+		GameObject _decor = null;
+
+		if (biome == 0) // forest
+		{
+			_decor = ForestDecor[Random.Range(0, ForestDecor.Count)];
+		}
+		else if (biome == 1) // desert
+		{
+			_decor = DesertDecor[Random.Range(0, DesertDecor.Count)];
+		}
+		else if (biome == 2) // winter
+		{
+			_decor = WinterDecor[Random.Range(0, WinterDecor.Count)];
+		}
+		GameObject decor = Instantiate(_decor, transform.position, Quaternion.identity, transform);
 	}
 
-	public void SpawnHole()
+	public void SpawnHole(int biome)
 	{
-		LayerMask nodes = LayerMask.GetMask("Node");
-		Collider[] hits = Physics.OverlapSphere(transform.position, 6f, nodes);
+		StartCoroutine(_SpawnHole(biome));
+	}
+
+	IEnumerator _SpawnHole(int biome)
+	{
+		yield return new WaitForSeconds(.5f);
+
+		GameObject hole = null;
+
+		if (biome == 0) // forest
+		{
+			hole = Instantiate(_holeForest, transform.position, Quaternion.identity, transform.parent.parent.transform);
+		}
+		else if (biome == 1) // desert
+		{
+			hole = Instantiate(_holeDesert, transform.position, Quaternion.identity, transform.parent.parent.transform);
+		}
+		else if (biome == 2) // winter
+		{
+			hole = Instantiate(_holeWinter, transform.position, Quaternion.identity, transform.parent.parent.transform);
+		}
+
+		hole.GetComponent<OutOfRangeDeleter>().zPos = lastGeneratedRow + 20;
+
+		int holeRange = Random.Range(2, 7);
+
+		LayerMask nodes = LayerMask.GetMask("Node", "Wall");
+		Collider[] hits = Physics.OverlapSphere(transform.position, holeRange, nodes);
 
 		bool leftSideClear = false;
-		if (Random.Range(0, 11) > 5)
+		if (!leftSide)
 		{
 			leftSideClear = true;
 		}
 
 		foreach (Collider hit in hits)
 		{
-			Node hitNode = hit.GetComponent<Node>();
-			int distance = hitNode.distanceFromWall;
+
+			Node hitNode = hit.GetComponentInParent<Node>();
 			bool makeHole = false;
 
 			if (leftSideClear)
@@ -75,32 +152,57 @@ public class Node : MonoBehaviour
 				if (Random.Range(0, 100) > 15)
 				{
 					Destroy(hit.gameObject);
+					//sometimes this destroys walls or something? weird horizontal holes in lakes
 				}
 			}
+
 		}
 
 		Destroy(gameObject);
 
-
-		Collider[] _hits = Physics.OverlapSphere(transform.position, 7f, nodes);
-		foreach (Collider hit in _hits)
-		{
-			Node hitNode = hit.GetComponent<Node>();
-			hitNode.Safe = false;
-		}
-
 	}
 
 
-	public void SpawnWall()
+	public void SpawnWall(int zPos)
 	{
-		Vector3 targetScale = transform.localScale;
-		targetScale.y = 2;
-		transform.localScale = targetScale;
+		transform.rotation = Quaternion.Euler(Vector3.forward);
 
-		Renderer rend = GetComponent<Renderer>();
-		rend.material.color = Color.black;
-		navMeshModifier.area = 1;
+		for (int x = 0; x < 10; x++)
+		{
+			int biomeCount = (int)((zPos + Random.Range(0, 2)) / worldGenerator.biomeLength);
+			int biome = worldGenerator.biomeArray[biomeCount];
+
+			GameObject _decor = null;
+
+			if (biome == 0) // forest
+			{
+				_decor = ForestDecor[Random.Range(0, ForestDecor.Count)];
+			}
+			else if (biome == 1) // desert
+			{
+				_decor = DesertDecor[Random.Range(0, DesertDecor.Count)];
+			}
+			else if (biome == 2) // winter
+			{
+				_decor = WinterDecor[Random.Range(0, DesertDecor.Count)];
+			}
+
+			Vector3 pos = Vector3.zero;
+			if (leftSide)
+			{
+				pos.x = -x;
+			}
+			else
+			{
+				pos.x = x;
+			}
+
+			//pos.y += x * .2f;
+
+			GameObject child = Instantiate(_decor, transform.position, Quaternion.identity, transform);
+			child.transform.localPosition = pos;
+		}
+
 	}
 
 }

@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5422028140035510260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4623713776503425195}
+  - component: {fileID: 6694574095122710251}
+  m_Layer: 0
+  m_Name: Node
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4623713776503425195
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5422028140035510260}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6694574095122710251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5422028140035510260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 996c11cad913e5a4fb1607314f105450, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldGenerator: {fileID: 0}
+  lastGeneratedRow: 0
+  distanceFromWall: 0
+  xVal: 0
+  leftSide: 0
+  Safe: 1
+  DesertDecor:
+  - {fileID: 5071586565977661516, guid: 2b2d271225c9f924bbe8584ee7a83302, type: 3}
+  - {fileID: 6888732265252116039, guid: 323e6d59e35d4124cbfa973d2d2ca717, type: 3}
+  _groundDesert: {fileID: 6128975762211861569, guid: 82f45151ae7ab444594b11391b8c8809,
+    type: 3}
+  _holeDesert: {fileID: 183042281713723820, guid: f0b55b9b4e90a70419291b56093046ce,
+    type: 3}
+  ForestDecor:
+  - {fileID: 6876513569827433225, guid: c86853c05ab0c3343b48e13b45216286, type: 3}
+  - {fileID: 6876513569827433225, guid: 86c276e83aa7b1441b3fe103bf53eb87, type: 3}
+  _groundForest: {fileID: 6350379425902923371, guid: 65f50e32392274f47a3a971e05440458,
+    type: 3}
+  _holeForest: {fileID: 7907919538796408883, guid: 4088e471ce781724eae72773ea0d1feb,
+    type: 3}
+  WinterDecor:
+  - {fileID: 6876513569827433225, guid: 84b7f0ffaf338b34daf8d50e2de9e001, type: 3}
+  - {fileID: 6876513569827433225, guid: 698785f6c665b424f8aaeefbea56167e, type: 3}
+  _groundWinter: {fileID: 6350379425902923371, guid: 4e9e11116f213494ab97f8fbbda8819d,
+    type: 3}
+  _holeWinter: {fileID: 7907919538796408883, guid: f62b72dff229de844853319a6d471d9d,
+    type: 3}
+  _firefly: {fileID: 9146552769558094387, guid: 360fc2d913950444883c4e736407b4e3,
+    type: 3}
+  isWater: 0
+  night: 0
+  biomeCount: 0

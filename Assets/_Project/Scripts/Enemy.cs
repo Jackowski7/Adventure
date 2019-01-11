@@ -106,7 +106,7 @@ public class Enemy : MonoBehaviour
 
 			if (enemyType == EnemyType.Hopper)
 			{
-				hopTarget = GameManager.player.transform.position;
+				hopTarget = GameManager.player.transform.position; 
 				StartCoroutine(PreHop());
 				yield return new WaitForSeconds(.2f);
 				chargingHop = false;

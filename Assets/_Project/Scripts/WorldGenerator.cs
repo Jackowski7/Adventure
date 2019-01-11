@@ -11,8 +11,6 @@ public class WorldGenerator : MonoBehaviour
 	public GameObject _node;
 
 	public Transform worldFolder;
-	public Transform water;
-	public Transform baseGround;
 	public Transform sun;
 
 	public NavMeshSurface surface;
@@ -21,50 +19,59 @@ public class WorldGenerator : MonoBehaviour
 	[Header("Map Settings")]
 
 	public int rowWidth = 10;
+	int initialRowWidth;
 	int previousRowWidth;
 
 	[HideInInspector]
 	public int zPos = 0;
-	float zMod = .8f;
+	float zMod = .865f;
 	float xMod;
+	Vector3 _sunTargetRot;
 
+	public List<int> biomeArray = new List<int> { };
+	public int biomeLength;
+
+	private void Awake()
+	{
+		for (int x = 0; x < 100; x++)
+		{
+			biomeArray.Add(Random.Range(0, 3));
+		}
+	}
 
 	private void Start()
 	{
+		initialRowWidth = rowWidth;
 		previousRowWidth = rowWidth;
 		player = GameManager.player;
-		player.transform.position = new Vector3(0, 2f, 14f);
+		_sunTargetRot = sun.transform.rotation.eulerAngles;
 	}
 	void Update()
 	{
 		Vector3 playerPos = player.transform.position;
 
-		if (((zPos * zMod) - playerPos.z) < 30)
+		if (((zPos * zMod) - playerPos.z) < 25)
 		{
 			GenerateRow();
+			_sunTargetRot.x += 1f;
 		}
 
-		if (((zPos * zMod) - playerPos.z) > 41)
+		if (((zPos * zMod) - playerPos.z) > 38)
 		{
-			player.transform.position = new Vector3(playerPos.x, playerPos.y, (zPos * zMod) - 41);
+			player.transform.position = new Vector3(playerPos.x, playerPos.y, (zPos * zMod) - 38);
 		}
 
-		water.transform.position = new Vector3(xMod, 0, zPos * zMod - 22);
-		water.transform.localScale = new Vector3(50, 1, 50);
-		baseGround.transform.position = new Vector3(xMod, 0, zPos * zMod - 22);
-		baseGround.transform.localScale = new Vector3(50, 1, 50);
-		//sun.transform.position = playerPos;
+		Quaternion sunTargetRot = Quaternion.Euler(_sunTargetRot);
+		sun.transform.rotation = Quaternion.Slerp(sun.transform.rotation, sunTargetRot, .1f);
+
 	}
 
 	public bool spawnEnemies;
 	public int enemyPadding = 2;
-	int lastEnemyRow = 0;
+	int lastEnemyRow = 10;
 
-	public int treePadding = 2;
-	int lastTreeRow = 0;
-
-	public int rockPadding = 2;
-	int lastRockRow = 0;
+	public int decorPadding = 2;
+	int lastDecorRow = 0;
 
 	public bool spawnHoles;
 	public int holePadding = 5;
@@ -74,7 +81,7 @@ public class WorldGenerator : MonoBehaviour
 	{
 		GameObject row = new GameObject("Row" + zPos);
 		row.transform.parent = worldFolder.transform;
-		Row rowScript = row.AddComponent<Row>();
+		OutOfRangeDeleter rowScript = row.AddComponent<OutOfRangeDeleter>();
 		rowScript.zPos = zPos;
 
 		// move map right if player 'enters' new row towards right
@@ -100,8 +107,7 @@ public class WorldGenerator : MonoBehaviour
 		}
 
 		bool spawnEnemy = false;
-		bool spawnTree = false;
-		bool spawnRock = false;
+		bool spawnDecor = false;
 		bool spawnHole = false;
 
 		spawnEnemy = false;
@@ -114,29 +120,18 @@ public class WorldGenerator : MonoBehaviour
 			}
 		}
 
-		spawnTree = false;
-		if (zPos - lastTreeRow > treePadding && !spawnEnemy)
+		spawnDecor = false;
+		if (zPos - lastDecorRow > decorPadding && !spawnEnemy)
 		{
 			if (Random.Range(0, 100) > 70)
 			{
-				spawnTree = true;
-				lastTreeRow = zPos;
-			}
-		}
-
-		spawnRock = false;
-		if (zPos - lastRockRow > rockPadding && !spawnEnemy && !spawnTree)
-		{
-			if (Random.Range(0, 100) > 70)
-			{
-
-				spawnRock = true;
-				lastRockRow = zPos;
+				spawnDecor = true;
+				lastDecorRow = zPos;
 			}
 		}
 
 		spawnHole = false;
-		if (zPos - lastHoleRow > holePadding && !spawnEnemy && !spawnTree && !spawnRock && spawnHoles)
+		if (zPos - lastHoleRow > holePadding && !spawnEnemy && !spawnDecor && spawnHoles)
 		{
 			if (Random.Range(0, 100) > 70)
 			{
@@ -146,12 +141,14 @@ public class WorldGenerator : MonoBehaviour
 		}
 
 		zPos++;
-		StartCoroutine(PlaceTiles(row, zPos, xMod, spawnEnemy, spawnTree, spawnRock, spawnHole));
+		StartCoroutine(PlaceTiles(row, zPos, xMod, spawnEnemy, spawnDecor, spawnHole));
+
 	}
 
 	int navMeshCounter = 5;
-	IEnumerator PlaceTiles(GameObject row, int _zPos, float xMod, bool _spawnEnemy, bool _spawnTree, bool _spawnRock, bool _spawnHole)
+	IEnumerator PlaceTiles(GameObject row, int _zPos, float xMod, bool _spawnEnemy, bool _spawnDecor, bool _spawnHole)
 	{
+		yield return new WaitForEndOfFrame();
 
 		int thisRowWidth = previousRowWidth;
 
@@ -161,14 +158,23 @@ public class WorldGenerator : MonoBehaviour
 		if (rowWidth < previousRowWidth)
 			thisRowWidth = previousRowWidth - 1;
 
-
 		int spawnX = Random.Range(2, thisRowWidth - 2);
 
-		for (int x = -3; x <= thisRowWidth + 3; x++)
+		if (_zPos == 20)
+		{
+			player.transform.position = new Vector3(rowWidth / 2 * xMod, 1.5f, (_zPos * zMod));
+		}
+
+		for (int x = -1; x <= thisRowWidth + 1; x++)
 		{
 			float zPos = _zPos * zMod;
 			GameObject node = Instantiate(_node, new Vector3(((int)(x - thisRowWidth / 2) + xMod - 1), -.5f, zPos), Quaternion.Euler(new Vector3(0, 30, 0)), row.transform);
-			Node nodeScript = node.GetComponent<Node>();
+			Node nodeScript = node.GetComponentInChildren<Node>();
+			nodeScript.worldGenerator = GetComponent<WorldGenerator>();
+			nodeScript.lastGeneratedRow = _zPos;
+
+			int biomeCount = (int)((zPos + Random.Range(0, 2)) / biomeLength);
+			int biome = biomeArray[biomeCount];
 
 			int _x = x;
 			if (_x > rowWidth / 2)
@@ -176,6 +182,9 @@ public class WorldGenerator : MonoBehaviour
 
 			nodeScript.distanceFromWall = Mathf.Abs(Mathf.Abs((rowWidth / 2) - _x) - (rowWidth / 2));
 			nodeScript.xVal = x;
+
+			if ((zPos % 360) + Random.Range(0, 15) > 100 && (zPos % 360) < 280)
+				nodeScript.night = true;
 
 			if (x <= (int)(thisRowWidth / 2))
 			{
@@ -188,34 +197,31 @@ public class WorldGenerator : MonoBehaviour
 
 			if (x < 0 || x > thisRowWidth)
 			{
-				nodeScript.SpawnWall();
+				nodeScript.SpawnWall((int)zPos);
 			}
 			else
 			{
 				if (_spawnEnemy && x == spawnX)
 				{
-					nodeScript.SpawnEnemy();
+					nodeScript.SpawnEnemy(biome);
 				}
 
-				if (_spawnTree && x == spawnX)
+				if (_spawnDecor && x == spawnX)
 				{
-					nodeScript.SpawnTree();
+					nodeScript.SpawnDecor(biome);
 				}
-
-				if (_spawnRock && x == spawnX)
+				else
 				{
-					nodeScript.SpawnRock();
+					nodeScript.SpawnGround(biome);
 				}
 
 				if (_spawnHole && x == spawnX)
 				{
-					nodeScript.SpawnHole();
+					nodeScript.SpawnHole(biome);
 				}
 			}
-
-
 		}
-			yield return new WaitForEndOfFrame();
+
 
 		navMeshCounter--;
 
@@ -223,12 +229,13 @@ public class WorldGenerator : MonoBehaviour
 		{
 			surface.BuildNavMesh();
 			navMeshCounter = 5;
+
+			rowWidth = Random.Range(initialRowWidth - 5, initialRowWidth + 5);
+
 		}
 
 		previousRowWidth = thisRowWidth;
 	}
-
-
 
 }
 

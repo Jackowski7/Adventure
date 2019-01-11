@@ -7,6 +7,12 @@ TagManager:
   - Enemy
   - TargetPoint
   - FallOff
+  - Wall
+  - Tree
+  - Rock
+  - Winter
+  - Forest
+  - Desert
   layers:
   - Default
   - TransparentFX
@@ -23,7 +29,7 @@ TagManager:
   - Wall
   - Ground
   - PlayerWeapon
-  - 
+  - TouchUI
   - 
   - 
   - 

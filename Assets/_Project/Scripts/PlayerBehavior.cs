@@ -4,31 +4,6 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using InControl;
 
-public class MyCharacterActions : PlayerActionSet
-{
-	public PlayerAction Attack;
-	public PlayerAction Left;
-	public PlayerAction Right;
-	public PlayerAction Up;
-	public PlayerAction Down;
-	public PlayerTwoAxisAction Move;
-
-	public PlayerAction Target;
-
-	public MyCharacterActions()
-	{
-		Attack = CreatePlayerAction("Attack");
-		Target = CreatePlayerAction("Target");
-
-		Left = CreatePlayerAction("Move Left");
-		Right = CreatePlayerAction("Move Right");
-		Up = CreatePlayerAction("Move Up");
-		Down = CreatePlayerAction("Move Down");
-
-		Move = CreateTwoAxisPlayerAction(Left, Right, Down, Up);
-	}
-}
-
 public class PlayerBehavior : MonoBehaviour
 {
 	MyCharacterActions actions;
@@ -40,17 +15,26 @@ public class PlayerBehavior : MonoBehaviour
 	public GameObject _potentialTargetReticle;
 	public static GameObject potentialTargetReticle;
 
-	//public TouchStickControl moveStick;
+	public ParticleSystem snow;
 
+
+	public GameObject _targetDirectionReticle;
+	public static GameObject targetDirectionReticle;
+	//public GameObject _potentialTargetDirectionReticle;
+	//public static GameObject potentialTargetDirectionReticle;
+
+
+	public int HP = 10;
 
 	GameObject target;
 	GameObject potentialTarget;
-
+	public float targetRadius;
 
 	[Space(20)]
 	[Header("Player Stats")]
 	//movement variables
 	public float speed = 1f;
+
 
 	//control settings
 	float verticalDeadzone = .1f;
@@ -68,6 +52,11 @@ public class PlayerBehavior : MonoBehaviour
 		compass = transform.Find("Compass").gameObject;
 		targetReticle = Instantiate(_targetReticle);
 		potentialTargetReticle = Instantiate(_potentialTargetReticle);
+
+		snow.Stop();
+
+		targetDirectionReticle = Instantiate(_targetDirectionReticle, transform);
+		//potentialTargetDirectionReticle = Instantiate(_potentialTargetDirectionReticle, transform);
 
 		actions = new MyCharacterActions();
 		actions.Attack.AddDefaultBinding(InputControlType.RightTrigger);
@@ -100,6 +89,18 @@ public class PlayerBehavior : MonoBehaviour
 
 	bool disableMouse = false;
 	bool cantMove = false;
+	bool fallTimeout = false;
+
+	private void FixedUpdate()
+	{
+		if (!cantMove)
+		{
+			float LXInput = actions.Move.Value.x;
+			float LYInput = actions.Move.Value.y;
+			moveDir = new Vector3(LXInput, 0, LYInput);
+			transform.Translate(moveDir * speed * Time.deltaTime, Space.World);
+		}
+	}
 
 	void Update()
 	{
@@ -120,15 +121,6 @@ public class PlayerBehavior : MonoBehaviour
 		{
 			TouchManager.ControlsEnabled = false;
 		}
-
-		if (!cantMove)
-		{
-			float LXInput = actions.Move.Value.x;
-			float LYInput = actions.Move.Value.y;
-			moveDir = new Vector3(LXInput, 0, LYInput);
-			transform.Translate(moveDir * speed * Time.deltaTime, Space.World);
-		}
-
 
 		float lookX = Mathf.Abs(actions.Move.X);
 		float lookY = Mathf.Abs(actions.Move.Y);
@@ -151,18 +143,17 @@ public class PlayerBehavior : MonoBehaviour
 			targetRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
 		}
 
-		transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10 * Time.deltaTime);
+		transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 15 * Time.deltaTime);
 
 		//get last safe tile to respawn on
 		LayerMask nodeLayer = LayerMask.GetMask("Node");
 		RaycastHit hit;
 		if (Physics.Raycast(transform.position, Vector3.down, out hit, 1f, nodeLayer))
 		{
-			Node node = hit.transform.GetComponent<Node>();
+			Node node = hit.transform.GetComponentInParent<Node>();
 			if (node.Safe)
 			{
 				returnPoint = node.transform.position;
-				returnPoint.y = transform.position.y + 2;
 			}
 		}
 
@@ -172,7 +163,6 @@ public class PlayerBehavior : MonoBehaviour
 			{
 				attacking = true;
 				Attack();
-				attackTime = Time.time;
 				comboTime = Time.time;
 				comboBroken = false;
 				combo = 0;
@@ -190,6 +180,10 @@ public class PlayerBehavior : MonoBehaviour
 					{
 						comboTime = Time.time;
 					}
+					else
+					{
+						comboBroken = true;
+					}
 				}
 			}
 
@@ -199,13 +193,17 @@ public class PlayerBehavior : MonoBehaviour
 		{
 			if (Time.time - comboTime > 1 / attackSpeed)
 			{
-				if (Time.time - attackTime > 1 / attackSpeed)
-				{
-					attacking = false;
-					Debug.Log(combo);
-					combo = 0;
-				}
+
+				attacking = false;
+				Debug.Log(combo);
+				combo = 0;
+
 			}
+		}
+
+		if (transform.position.y < -1 && !fallTimeout)
+		{
+			StartCoroutine(FallOff());
 		}
 
 	}
@@ -265,22 +263,14 @@ public class PlayerBehavior : MonoBehaviour
 		return hitSomething;
 	}
 
-	bool fallTimeout = false;
-	private void OnTriggerStay(Collider other)
-	{
-		if (other.transform.tag == "FallOff" && !fallTimeout)
-		{
-			StartCoroutine(FallOff());
-		}
-	}
-
 	IEnumerator FallOff()
 	{
+		GetHit(1);
 		fallTimeout = true;
 		cantMove = true;
 		yield return new WaitForSeconds(.45f);
 
-		returnPoint.y += 2;
+		returnPoint.y = 0f;
 
 		float timeout = 10;
 		while (timeout > 0)
@@ -292,8 +282,17 @@ public class PlayerBehavior : MonoBehaviour
 
 		transform.position = returnPoint;
 
+		yield return new WaitForSeconds(.25f);
+
 		fallTimeout = false;
 		cantMove = false;
+	}
+
+
+	public void GetHit(int damage)
+	{
+		HP -= damage;
+		GameManager.UI.GetComponent<UI>().UpdateHP(HP);
 	}
 
 	void FindTargets()
@@ -303,18 +302,23 @@ public class PlayerBehavior : MonoBehaviour
 		float closestDifference = 1000;
 		float closestDistance = 1000;
 		LayerMask enemyLayer = LayerMask.GetMask("Enemy");
-		Collider[] enemies = Physics.OverlapSphere(transform.position, 5f, enemyLayer, QueryTriggerInteraction.Collide);
+		Collider[] enemies = Physics.OverlapSphere(transform.position, targetRadius, enemyLayer, QueryTriggerInteraction.Collide);
 		foreach (Collider enemy in enemies)
 		{
 			if (enemy.tag == "TargetPoint")
 			{
 				compass.transform.LookAt(enemy.transform);
 				float compassRot = compass.transform.rotation.eulerAngles.y;
-				float playerRot;
+				float playerRot = 0;
 
 				if (lookVal > .1f)
 				{
-					playerRot = Quaternion.LookRotation(moveDir).eulerAngles.y;
+
+					if (moveDir != Vector3.zero)
+					{
+						playerRot = Quaternion.LookRotation(moveDir).eulerAngles.y;
+					}
+
 					float difference = Mathf.Abs(compassRot - playerRot);
 
 					if (difference < 60)
@@ -339,7 +343,7 @@ public class PlayerBehavior : MonoBehaviour
 		if (target != null)
 		{
 			float targetDistance = (transform.position - target.transform.position).magnitude;
-			if (targetDistance > 5)
+			if (targetDistance > targetRadius)
 			{
 				if (potentialTarget != null)
 				{
@@ -423,6 +427,7 @@ public class PlayerBehavior : MonoBehaviour
 			}
 			else
 			{
+
 				float potentialTargetDistance = (potentialTargetReticle.transform.position - potentialTarget.transform.position).magnitude;
 				if (potentialTargetDistance > .3f && potentialTargetDistance < 4f)
 				{
@@ -444,10 +449,12 @@ public class PlayerBehavior : MonoBehaviour
 		{
 			targetReticle.transform.position = target.transform.position;
 			targetReticle.SetActive(true);
+			targetDirectionReticle.SetActive(true);
 		}
 		else
 		{
 			targetReticle.SetActive(false);
+			targetDirectionReticle.SetActive(false);
 		}
 	}
 
@@ -470,6 +477,51 @@ public class PlayerBehavior : MonoBehaviour
 		}
 	}
 
+	private void OnCollisionEnter(Collision collision)
+	{
+		if (collision.transform.tag == "Winter")
+		{
+			snow.Play();
+		}
+		if (collision.transform.tag == "Forest")
+		{
+			snow.Stop();
+		}
+		if (collision.transform.tag == "Desert")
+		{
+			snow.Stop();
+		}
+	}
+
+
+
+}
+
+
+
+public class MyCharacterActions : PlayerActionSet
+{
+	public PlayerAction Attack;
+	public PlayerAction Left;
+	public PlayerAction Right;
+	public PlayerAction Up;
+	public PlayerAction Down;
+	public PlayerTwoAxisAction Move;
+
+	public PlayerAction Target;
+
+	public MyCharacterActions()
+	{
+		Attack = CreatePlayerAction("Attack");
+		Target = CreatePlayerAction("Target");
+
+		Left = CreatePlayerAction("Move Left");
+		Right = CreatePlayerAction("Move Right");
+		Up = CreatePlayerAction("Move Up");
+		Down = CreatePlayerAction("Move Down");
+
+		Move = CreateTwoAxisPlayerAction(Left, Right, Down, Up);
+	}
 }
 
 
@@ -500,3 +552,4 @@ public class PlayerBehavior : MonoBehaviour
 			targetRotation = Quaternion.LookRotation(lookDirection);
 		}
 */
+
